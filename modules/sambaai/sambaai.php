@@ -35,7 +35,7 @@ class SambaAi extends Module
          */
         $this->name = 'sambaai';
         $this->tab = 'emailing';
-        $this->version = '1.0.11';
+        $this->version = '1.1.1';
         $this->author = 'Samba.ai';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => '1.7');
@@ -43,7 +43,7 @@ class SambaAi extends Module
         parent::__construct();
         $this->displayName = $this->l('Samba.ai connector');
         $this->description = $this->l('Samba.ai online marketing a.i. automation connector.');
- 
+
         $this->confirmUninstall = $this->l('Are you sure you want to uninstall?');
         #Configuration::get('SAMBA_TP'))
     }
@@ -67,21 +67,30 @@ class SambaAi extends Module
         if (empty(Configuration::get('SAMBA_KEY', $key))) {
             Configuration::updateValue('SAMBA_KEY', $key);
         }
- 
+
         return true;
     }
 
-    public function uninstall()
-    {
+    public function uninstall(){
         if (!parent::uninstall()) {
             return false;
         }
-
-        if (!Configuration::deleteByName('SAMBA_TP')) {
+/*
+      Delete created fields in configuration DB
+*/
+        if (!Configuration::deleteByName('SAMBA_TP')
+          || !Configuration::deleteByName('SAMBA_ORDER_CREATE')
+          || !Configuration::deleteByName('SAMBA_ORDER_FINISHED')
+          || !Configuration::deleteByName('SAMBA_ORDER_CANCLED')
+          || !Configuration::deleteByName('SAMBA_SHOP')
+          || !Configuration::deleteByName('SAMBA_LANG')
+      // Current Date -2 years
+          || !Configuration::deleteByName('SAMBA_DATE')
+          || !Configuration::deleteByName('SAMBA_WIDGET_STYLE')){
             #!Configuration::deleteByName('SAMBA_WIDGET')) {
             return false;
         }
-   
+
         return true;
     }
 
@@ -111,6 +120,7 @@ class SambaAi extends Module
         } //GDPR
 
         $tp = Configuration::get('SAMBA_TP');
+        $widget = Configuration::get('SAMBA_WIDGET_STYLE');
         if (!$tp) {
             return '<!-- SAMBA.AI tracking code will go here - please set your trackpoint number -->';
         }
@@ -119,16 +129,27 @@ class SambaAi extends Module
             array( 'trackpoint'  => $tp,
                    'customer_id' => $id)
         );
+        $this->context->smarty->assign(
+            array( 'samba_widget_style'  => $widget)
+        );
         return $this->display(__FILE__, 'views/templates/front/tracker.tpl');
+    }
+
+    public function hookDisplayHome(){
+      $widget = Configuration::get('SAMBA_WIDGET_STYLE');
+      if ($widget) {
+        $this->context->controller->addJS('modules/sambaai/js/swiperbundle.min.js');
+        $this->context->controller->addCSS('modules/sambaai/css/swiperbundle.min.css');
+        $this->context->controller->addCSS('modules/sambaai/css/custom.css');
+        $this->context->controller->addJS('modules/sambaai/js/sambaw.js');
+        Media::addJsDef(array('sambaai' => array('samba_widget_style' => $widget)));
+
+        return $this->display(__FILE__, 'views/templates/front/widget.tpl');
+      }
     }
 
     public function hookHome()
     {
-        $widget = Configuration::get('SAMBA_WIDGET');
-        if (!$widget) {
-            return '<!-- SAMBA.AI recommeder code will go here if enabled.-->';
-        }
-        return $this->display(__FILE__, 'views/templates/front/recommender.tpl');
     }
 
 
@@ -153,8 +174,34 @@ class SambaAi extends Module
     public function getContent()
     {
         $output = null;
- 
+
         if (Tools::isSubmit('submit'.$this->name)) {
+            $form_values = $this->getConfigurationFormValues();
+            $this->removeOldValues($form_values);
+            $all_statuses = $this->getOrderStatus();
+    /*
+    Handle Checkboxes
+    */
+            $checkbox_samba_create = array();
+            $checkbox_samba_cancled = array();
+            $checkbox_samba_finished = array();
+            foreach ($all_statuses as $chbx_samba) {
+              if (Tools::getValue('SAMBA_ORDER_CREATE_'.(int)$chbx_samba['id_order_state']))
+               $checkbox_samba_create[] = $chbx_samba['id_order_state'];
+
+              if (Tools::getValue('SAMBA_ORDER_FINISHED_'.(int)$chbx_samba['id_order_state']))
+                $checkbox_samba_finished[] = $chbx_samba['id_order_state'];
+
+              if (Tools::getValue('SAMBA_ORDER_CANCLED_'.(int)$chbx_samba['id_order_state']))
+               $checkbox_samba_cancled[] = $chbx_samba['id_order_state'];
+            }
+    /*
+    Update Checkboxes to Configuration DB
+    */
+            Configuration::updateValue('SAMBA_ORDER_FINISHED', implode(',', $checkbox_samba_finished));
+            Configuration::updateValue('SAMBA_ORDER_CANCLED', implode(',', $checkbox_samba_cancled));
+            Configuration::updateValue('SAMBA_ORDER_CREATE', implode(',', $checkbox_samba_create));
+
             $tp = Tools::getValue('SAMBA_TP');
             if (!$tp) {
                 $output .= $this->displayError($this->l('Invalid Configuration value'));
@@ -166,6 +213,11 @@ class SambaAi extends Module
                 Configuration::updateValue('SAMBA_SHOP', $shop);
                 $lang = (int) (Tools::getValue('SAMBA_LANG'));
                 Configuration::updateValue('SAMBA_LANG', $lang);
+                $date =  (Tools::getValue('SAMBA_DATE'));
+                Configuration::updateValue('SAMBA_DATE', $date);
+                $widget_style =  (Tools::getValue('SAMBA_WIDGET_STYLE'));
+                Configuration::updateValue('SAMBA_WIDGET_STYLE', $widget_style);
+
                 #$key = (Tools::getValue('SAMBA_KEY'));
                 #Configuration::updateValue('SAMBA_KEY', $key);
 
@@ -251,6 +303,103 @@ class SambaAi extends Module
         ),
         array(
 
+        'type' => 'select',
+        'name' => 'SAMBA_WIDGET_STYLE',
+        'label' => $this->l('Widget recommended products'),
+        'desc' => $this->l('Disable or choose CSS style'),
+        'options' => array(
+            'query' => array(
+                array(
+                    'value' => '0',
+                    'text' => $this->l('Disabled'),
+                ),
+                array(
+                    'value' => '1',
+                    'text' => $this->l('Style 1'),
+                ),
+                array(
+                    'value' => '2',
+                    'text' => $this->l('Style 2'),
+                ),
+            ),
+            'id' => 'value',
+            'name' => 'text'
+        )
+        ),
+        array(
+            'type' => 'checkbox',
+            'label' => $this->l('Select statuses for Samba Create'),
+            'name' => 'SAMBA_ORDER_CREATE',
+            'hint' => $this->l('Choose the order status'),
+            'is_default' => 0,
+            'multiple' => true,
+            'expand' => array(
+                'default' => 'show',
+                'show' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Show CREATE'),
+                ),
+                'hide' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Hide CREATE'),
+                )
+            ),
+            'values' => array(
+                'query' => $this->getOrderStatus(),
+                'id' => 'id_order_state',
+                'name' => 'name'
+            )
+        ),
+        array(
+            'type' => 'checkbox',
+            'label' => $this->l('Select statuses for Samba Finished'),
+            'name' => 'SAMBA_ORDER_FINISHED',
+            'hint' => $this->l('Choose the order status'),
+            'is_default' => 0,
+            'multiple' => true,
+            'expand' => array(
+                'default' => 'show',
+                'show' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Show FINISHED'),
+                ),
+                'hide' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Hide FINISHED'),
+                )
+            ),
+            'values' => array(
+                'query' => $this->getOrderStatus(),
+                'id' => 'id_order_state',
+                'name' => 'name'
+            )
+        ),
+        array(
+            'type' => 'checkbox',
+            'label' => $this->l('Select statuses for Samba Cancled'),
+            'name' => 'SAMBA_ORDER_CANCLED',
+            'hint' => $this->l('Choose the order status'),
+            'is_default' => 0,
+            'multiple' => true,
+            'expand' => array(
+                'default' => 'show',
+                'show' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Show CANCLED'),
+                ),
+                'hide' => array(
+                    'icon' => 'gear',
+                    'text' => $this->l('Hide CANCLED'),
+                )
+            ),
+            'values' => array(
+                'query' => $this->getOrderStatus(),
+                'id' => 'id_order_state',
+                'name' => 'name'
+            )
+        ),
+        array(
+
 
         'type' => 'select',
         'name' => 'SAMBA_LANG',
@@ -271,6 +420,17 @@ class SambaAi extends Module
                 'required' => true
         ),
         */
+
+        array(
+            'type' => 'date',
+            'label' => $this->l('Send data from date:'),
+            'name' => 'SAMBA_DATE',
+            'desc' => $this->l('since when Samba is importing orders'),
+            'size' => 20,
+            'lang' => false,
+            'required' => false
+        ),
+
         array(
                 'type' => 'textarea',
                 'label' => $this->l('Samba feed URLs'),
@@ -279,15 +439,15 @@ class SambaAi extends Module
                 'autoload_rte' => false,
                 'hint' => 'Copy these to samba.',
                 'cols' => 50,
-		'rows' => 4,
-	        'id' => 'yt_feeds',
-	),
-	array(
-		"type" => "html",
-		"name" => "yt_button",
-		"html_content" => '<button type="button" onClick="javascript: copyToClipboard(document.getElementById(\'yt_feeds\').value)">Copy feed URLs</button>',
-	),
-	),
+        'rows' => 4,
+            'id' => 'yt_feeds',
+    ),
+    array(
+        "type" => "html",
+        "name" => "yt_button",
+        "html_content" => '<button type="button" onClick="javascript: copyToClipboard(document.getElementById(\'yt_feeds\').value)">Copy feed URLs</button>',
+    ),
+    ),
         'submit' => array(
             'title' => $this->l('Save'),
             'class' => 'btn btn-default pull-right'
@@ -319,24 +479,19 @@ class SambaAi extends Module
             'desc' => $this->l('Back to list')
         )
         );
-        // Load current value
-        $helper->fields_value['SAMBA_TP'] = Configuration::get('SAMBA_TP');
-        #$helper->fields_value['SAMBA_WIDGET'] = Configuration::get('SAMBA_WIDGET');
-        $helper->fields_value['SAMBA_SHOP'] = Configuration::get('SAMBA_SHOP');
-        $helper->fields_value['SAMBA_LANG'] = Configuration::get('SAMBA_LANG') or $default_lang;
-        #$helper->fields_value['SAMBA_KEY'] = Configuration::get('SAMBA_KEY');
-        $SAMBA_KEY=Configuration::get('SAMBA_KEY');
-        $SHOP_URL = 'https://'.Configuration::get('PS_SHOP_DOMAIN_SSL').'/';
-        $helper->fields_value['feeds'] = $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'products')."\n".
-        $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'categories')."\n".
-        $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'orders')."\n".
-        $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'customers')."\n";
+        // Load current value to tpl_vars
+        $helper->tpl_vars = array(
+            'fields_value' => $this->getConfigurationFormValues(), /* Add values for your inputs */
+            'languages' => $this->context->controller->getLanguages(),
+            'id_language' => $this->context->language->id,
+        );
+
 
         $this->context->smarty->assign(array(
             'dir' => $this->_path,
         ));
         $output = $output.$this->context->smarty->fetch($this->local_path.'views/templates/admin/config.tpl');
-
+        //
         return $output.$helper->generateForm($fields_form);
     }
 
@@ -347,5 +502,107 @@ class SambaAi extends Module
             $l[] = array( 'id' => $s['id_shop'], 'name' => $s['name'] );
         }
         return $l;
+    }
+
+    protected function getConfigurationFormValues()
+    {
+      $SAMBA_KEY=Configuration::get('SAMBA_KEY');
+      $SHOP_URL = 'https://'.Configuration::get('PS_SHOP_DOMAIN_SSL').'/';
+      $feeds = $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'products')."\n".
+      $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'categories')."\n".
+      $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'orders')."\n".
+      $this->genFeedUri($SHOP_URL, $SAMBA_KEY, 'customers')."\n";
+ /*
+    Assign checkboxes to array's
+ */
+      $id_checkbox_samba_create = array();
+      if ($chbx_samba_create_values = Configuration::get('SAMBA_ORDER_CREATE')){
+        $chbx_samba_create_values = explode(',', Configuration::get('SAMBA_ORDER_CREATE'));
+        foreach ($chbx_samba_create_values as $v_scr){
+          $id_checkbox_samba_create['SAMBA_ORDER_CREATE_'.(int)$v_scr] = true;
+        }
+      }
+      $id_checkbox_samba_cancled = array();
+      if ($chbx_samba_cancled_values = Configuration::get('SAMBA_ORDER_CANCLED')){
+        $chbx_samba_cancled_values = explode(',', Configuration::get('SAMBA_ORDER_CANCLED'));
+        foreach ($chbx_samba_cancled_values as $v_sca){
+          $id_checkbox_samba_cancled['SAMBA_ORDER_CANCLED_'.(int)$v_sca] = true;
+        }
+      }
+      $id_checkbox_samba_finished = array();
+      if ($chbx_samba_finished_values = Configuration::get('SAMBA_ORDER_FINISHED')){
+        $chbx_samba_finished_values = explode(',', Configuration::get('SAMBA_ORDER_FINISHED'));
+        foreach ($chbx_samba_finished_values as $v_sf){
+            $id_checkbox_samba_finished['SAMBA_ORDER_FINISHED_'.(int)$v_sf] = true;
+        }
+      }
+        $return = array(
+            'SAMBA_TP' => Configuration::get('SAMBA_TP'),
+            'SAMBA_SHOP' => Configuration::get('SAMBA_SHOP'),
+            'SAMBA_LANG' => Configuration::get('SAMBA_LANG'),
+            'SAMBA_DATE' => Configuration::get('SAMBA_DATE'),
+            'SAMBA_WIDGET_STYLE' => Configuration::get('SAMBA_WIDGET_STYLE'),
+            'feeds' => $feeds,
+        );
+
+        /*
+          Marge all configuration array's
+        */
+       $return = array_merge($return, $id_checkbox_samba_create, $id_checkbox_samba_cancled,$id_checkbox_samba_finished );
+       // $ar = json_encode($return);
+       // $this->slack_send($ar,'#test');
+       // print_r($return);
+       // $return = array_merge($return, $id_checkbox_samba_cancled);
+       // $return = array_merge($return, $id_checkbox_samba_finished);
+      // echo "<pre>";
+        // print_r($return);
+
+        return $return;
+    }
+
+    public function getOrderStatus($addempty = true)
+    {
+        $statuses = OrderState::getOrderStates(Context::getContext()->language->id);
+        $status = array();
+        if (!$addempty) {
+            return $statuses;
+        } else {
+            return array_merge($status, $statuses);
+        }
+    }
+    public function removeOldValues($config)
+    {
+        foreach (array_keys($config) as $key) {
+            Configuration::deleteByName($key);
+        }
+    }
+    private function updateSelectedStatuses($statuses, $samba_order_type)
+    {
+        if (empty($statuses)) {
+            $statuses = array();
+        }
+        // if (!is_array($statuses)) {
+        //     $statuses = array($statuses);
+        //     $statuses = array_merge($statuses, $this->getCarriersCodEof());
+        // }
+        $statuses = array_filter($statuses, 'strlen');
+        $statuses = implode(',', $statuses);
+        Configuration::updateValue($samba_order_type, $statuses);
+    }
+    private function slack_send($message, $channel)
+    {
+        $ch = curl_init("https://slack.com/api/chat.postMessage");
+        $data = http_build_query([
+            "token" => "xoxb-775383859264-2826902473234-RhKbmNqMs4RTHfgiaTz2tgSv",
+            "channel" => $channel, //"#mychannel",
+            "text" => $message, //"Hello, Foo-Bar channel message.",
+        ]);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return $result;
     }
 }

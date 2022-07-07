@@ -48,14 +48,16 @@ class FProduct
             $common->tjoin('product_lang', 'pl').' on pl.id_product = p.id_product '.
             $common->tjoin('image', 'i').' on p.id_product = i.id_product '.
             $common->tjoin('stock_available', 's').' on s.id_product = p.id_product '.
+            $common->tjoin('product_shop', 'ps').' on ps.id_product = p.id_product '.
 	    $common->tjoin('category_lang', 'cl').' on cl.id_category = p.id_category_default '.
 	    $common->tjoin('manufacturer', 'mfg').' on mfg.id_manufacturer = p.id_manufacturer '.
 	    "inner join (select id_product,min(position) as position from ".
 	    	$common->tname("image").
 	    " group by id_product) img_pos on img_pos.id_product = i.id_product and img_pos.position = i.position ".
             'where pl.id_lang = '.$LANG_ID.' and '.
-                'pl.id_shop = '.$SHOP_ID.' and '.
-                's.id_shop = '.$SHOP_ID.' and '.
+                'ps.id_shop = '.$SHOP_ID.' and '.
+                // 'pl.id_shop = '.$SHOP_ID.' and '.
+                // 's.id_shop = '.$SHOP_ID.' and '.
                 's.id_product_attribute = 0 and '.
                 'cl.id_lang = '.$LANG_ID.' '.
 		'group by p.id_product';

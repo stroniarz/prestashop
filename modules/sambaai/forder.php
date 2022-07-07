@@ -31,6 +31,12 @@ class FOrder
 {
     public function __construct($w, $common)
     {
+    // Get date from config if not set assing 1970
+        $today =  date('Y-m-d H:i:s');
+        $date_from = Configuration::get('SAMBA_DATE');
+        if(empty($date_from)){
+          $date_from = '1970-01-01';
+        }
         $this->w = $w;
         $this->common = $common;
         #$LANG_ID = $common->getConfig('LANG_ID');
@@ -38,7 +44,10 @@ class FOrder
         $this->q = "select o.*, a.*, od.* from ".$common->tname('orders', 'o')." ".
                 $common->tjoin('address', 'a').' on o.id_address_delivery = a.id_address '.
                 $common->tjoin('order_detail', 'od').' on o.id_order = od.id_order '.
-                'order by o.id_order';
+                $common->tjoin('customer', 'cu').' on o.id_customer = cu.id_customer '.
+                ' where o.id_order > 50 AND o.module!="x13allegro"
+                AND o.date_add BETWEEN "' . $date_from . '" AND "' . $today . '"
+              order by o.id_order';
     }
 
     public function genFeedPage($page, $cust_email, $cust_valid)
@@ -59,7 +68,8 @@ class FOrder
             }
             $xw = $w->startLn();
             #$customer_id = base64_encode($o['id_customer']);
-            $status = $common->orderStatus((int)($o['current_state']));
+            // $status = $common->orderStatus((int)($o['current_state']));
+            $status = $this->getStatus(($o['current_state']));
             $xw->writeElement('ORDER_ID', $order_id);
             $xw->writeElement('CUSTOMER_ID', $customer_id);
             $xw->writeElement('CREATED_ON', $common->dtIso($o['date_add']));
@@ -94,6 +104,20 @@ class FOrder
 	}
 	return count($orders);
     }
+  // Assign status by client choice
+    private function getStatus($value){
+      $arr_create=explode(',',Configuration::get('SAMBA_ORDER_CREATE'));
+      $arr_finished=explode(',',Configuration::get('SAMBA_ORDER_FINISHED'));
+      $arr_cancled=explode(',',Configuration::get('SAMBA_ORDER_CANCLED'));
+      if (in_array($value,$arr_create))
+        return 'created';
+      else if (in_array($value,$arr_finished))
+        return 'finished';
+      else if (in_array($value,$arr_cancled))
+        return 'canceled';
+      else
+        return 'created';
+    }
     public function genFeed()
     {
         $w = $this->w;
@@ -102,14 +126,14 @@ class FOrder
         $customer = new FCustomer($w, $common, false);
         $customer_info = $customer->genFeed();
         $cust_email = $customer_info['email'];
-	$cust_valid = $customer_info['valid'];
+  	$cust_valid = $customer_info['valid'];
 
-	$l = 1;
-	$pageno = 0;
-	while($l){
-		$l = $this->genFeedPage($pageno, $cust_email, $cust_valid);
-		$pageno += 1;
-	}
+  	$l = 1;
+  	$pageno = 0;
+  	while($l){
+  		$l = $this->genFeedPage($pageno, $cust_email, $cust_valid);
+  		$pageno += 1;
+  	}
 
         $w->end();
         #return $orders;

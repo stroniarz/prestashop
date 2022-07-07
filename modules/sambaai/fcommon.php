@@ -110,7 +110,7 @@ class Common
 
     public function imgUrl($img_id, $link_rewrite)
     {
-        return "http://".$this->config['link']->getImageLink($link_rewrite, $img_id);
+        return "http://".$this->config['link']->getImageLink($link_rewrite, $img_id,  'large_default');
     }
 
     public function reducedPrice($product_id, $price, $tax = 0)

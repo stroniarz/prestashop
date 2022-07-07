@@ -5,7 +5,7 @@
 *}
 {literal}
 <!-- Samba.ai scripts -->
-<script async src="https://yottlyscript.com/script.js?tp={/literal}{$trackpoint|escape:'htmlall':'UTF-8'}{literal}"></script>
+<script defer src="https://yottlyscript.com/script.js?tp={/literal}{$trackpoint|escape:'htmlall':'UTF-8'}{literal}"></script>
 <script type="text/javascript">
 function _yt_product_id(prod, attr){
 return String(prod) + "-" + String(attr);
@@ -49,10 +49,14 @@ diffAnalytics.cartInteraction({ content: sps, onOrderPage: onOrderPage });
 };
 
 var _yottlyOnload = _yottlyOnload || []
-_yottlyOnload.push(function () { 
+_yottlyOnload.push(function () {
 yt_run();
 });
-
 </script>
-<!-- End Samba.ai scripts -->
 {/literal}
+{if $samba_widget_style != 0}
+{literal}
+<!-- <script defer src="/modules/sambaai/js/sambaw.js"></script> -->
+{/literal}
+{/if}
+<!-- End Samba.ai scripts -->

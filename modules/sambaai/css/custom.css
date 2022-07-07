@@ -1,0 +1,49 @@
+.container-sambaai{
+  position: relative;
+  padding: 0 40px;
+  margin-bottom: 60px;
+}
+
+@media (max-width: 500px){
+  .container-sambaai{
+  padding: 0 25px;
+}
+
+.swiper-button-next:after{
+  margin-right: -25px;
+}
+
+.swiper-button-prev:after{
+  margin-left: -25px;
+}
+}
+.swiper-button-next:after, .swiper-button-prev:after{
+  color: black;
+  font-size: 28px;
+}
+
+
+.container-sambaai .product-miniature{
+  height: 100%;
+}
+
+.container-sambaai .product-container{
+  display: flex;
+  flex-wrap: wrap;
+  height: 100%;
+}
+
+.container-sambaai .product-description{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.container-sambaai .product-title{
+  width: 100%;
+}
+
+.container-sambaai .product-price-and-shipping{
+  margin-top: auto;
+  padding-bottom: 10px;
+}
