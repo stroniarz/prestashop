@@ -12,6 +12,7 @@ admin5474qs5p8/autoupgrade/
 !/modules/
 !/override/
 !/themes/
+!/sync/
 /themes/*/cache/
 /themes/*/assets/cache/
 
