@@ -60,33 +60,9 @@ $excelData .= implode("\t", array_values($fields)) . "\n";
   WHERE im.id_product ='$id_product'",true,false);
   return $images;
  }
-// // Fetch records from database
-// $query = $db->query("SELECT * FROM members ORDER BY id ASC");
-// if($query->num_rows > 0){
-//     // Output each row of the data
-//     while($row = $query->fetch_assoc()){
-//         $status = ($row['status'] == 1)?'Active':'Inactive';
-//         $lineData = array($row['id'], $row['first_name'], $row['last_name'], $row['email'], $row['gender'], $row['country'], $row['created'], $status);
-//         array_walk($lineData, 'filterData');
-//         $excelData .= implode("\t", array_values($lineData)) . "\n";
-//     }
-// }else{
-//     $excelData .= 'No records found...'. "\n";
-// }
 
-// Headers for download
+// Download the file
 header("Content-Type: application/vnd.ms-excel");
 header("Content-Disposition: attachment; filename=\"$fileName\"");
 
-// Render excel data
-// echo $excelData;
-// echo "<pre>";
-// $imm = getImg(1);
-// print_r($imm);
-// echo _PS_BASE_URL_.__PS_BASE_URI__;
-// print_r($products);
-// $link = new Link();)
-// echo $link->getProductLink($products[0]['id_product']);
-// echo Tools::link_rewrite($products[0]['link_rewrite']);
-
-// exit;
+exit;
