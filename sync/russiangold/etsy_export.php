@@ -1,6 +1,6 @@
 <?php
-require '../config/config.inc.php';
-require_once '../init.php';
+require '../../config/config.inc.php';
+require_once '../../init.php';
 
 $products = Db::getInstance()->executeS("SELECT p.id_product, pl.name, p.ean13, ps.price, sa.quantity, cl.name as cName, m.name as bName,
 (SELECT t.rate FROM ps_tax t
@@ -23,7 +23,7 @@ function filterData(&$str){
 }
 
 // Excel file name for download
-$fileName = "etsy_products_" . date('Y-m-d') . ".xls";
+$fileName = "emag_products_" . date('Y-m-d') . ".xls";
 
 // Column names
 
@@ -61,8 +61,9 @@ $excelData .= implode("\t", array_values($fields)) . "\n";
   return $images;
  }
 
+
 // Download the file
 header("Content-Type: application/vnd.ms-excel");
 header("Content-Disposition: attachment; filename=\"$fileName\"");
-
+echo $excelData;
 exit;
