@@ -1,7 +1,9 @@
 $( document ).ready(function() {
-  if (sambaai.samba_widget_style != 0) {
-    sambaSwiper();
-    sambaPersonaliser(sambaai.samba_widget_style);
+  if (typeof sambaai !== 'undefined') {
+    if (sambaai.samba_widget_style != 0) {
+      sambaSwiper();
+      sambaPersonaliser(sambaai.samba_widget_style);
+    }
   }
 
 });
@@ -74,7 +76,7 @@ function sambaStyl1(result){
             '</span><span class="sr-only">'
             + 'Cena' +
             '</span><span class="price current-price-discount">'
-            + value.formattedPrice + '</span></div></div></div></article><div>').appendTo('.swiper-wrapper');
+            + value.formattedPrice + '</span></div></div></div></article><div>').appendTo('.container-sambaai .swiper-wrapper');
           } else {
             $('<div class="swiper-slide h-auto flex-wrap d-flex"><article class="product-miniature  style-1 hover-mobile"><div class="product-container"><div class="thumbnail-container"><div class="thumbnail-inner"><a href="'
             + value.url + '"><img src="'
@@ -85,7 +87,7 @@ function sambaStyl1(result){
             '</a></p><div class="product-price-and-shipping"></span><span class="sr-only">'
             + 'Cena' +
             '</span><span class="price current-price-discount">'
-            + value.formattedPrice + '</span></div></div></div></article><div>').appendTo('.swiper-wrapper');
+            + value.formattedPrice + '</span></div></div></div></article><div>').appendTo('.container-sambaai .swiper-wrapper');
           }
         });
         console.log(result);
