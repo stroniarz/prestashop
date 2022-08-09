@@ -82,7 +82,22 @@ class FProduct
         foreach ($products as $p) {
             $xw = $w->startLn();
             $product_id = $p['id_product'];
-            #$core_product = new Product($product_id);
+        //    $core_product = new Product($product_id);
+        //Adding Product Features 
+        $frontfeatures = Product::getFrontFeaturesStatic(1, $product_id);
+        if(isset($frontfeatures)){
+
+          $xw->startElement('PARAMETERS');
+          foreach ($frontfeatures as $feature) {
+            $xw->startElement('PARAMETER');
+            $xw->writeElement('NAME', $feature['name']);
+            $xw->writeElement('VALUE', $feature['value']);
+            $xw->endElement();
+          }
+          $xw->endElement();
+        }
+
+
             $xw->writeElement('PRODUCT_ID', $product_id.'-0');
             $xw->writeElement('TITLE', $p['name']);
             $xw->writeElement('DESCRIPTION', $p['description']);
@@ -125,10 +140,10 @@ class FProduct
 
 	    $xw->writeElement('BRAND', $p['mfg_desc']);
 
-            $common->parameter($xw, 'width', $p['width']);
-            $common->parameter($xw, 'depth', $p['depth']);
-            $common->parameter($xw, 'height', $p['height']);
-            $common->parameter($xw, 'weight', $p['weight']);
+            // $common->parameter($xw, 'width', $p['width']);
+            // $common->parameter($xw, 'depth', $p['depth']);
+            // $common->parameter($xw, 'height', $p['height']);
+            // $common->parameter($xw, 'weight', $p['weight']);
             #$xw->writeElement('VARIANT', null);
 	    if ($this->variants($db, $product_id, $p['link_rewrite'], $p['image'])){
 		$xw->writeElement('STOCK', 0);
